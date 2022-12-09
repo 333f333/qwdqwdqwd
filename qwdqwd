@@ -1,0 +1,224 @@
+--official 2
+
+--Main settings
+local rs = game:GetService("RunService")
+local uis = game:GetService("UserInputService")
+--
+local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/xHeptc/Kavo-UI-Library/main/source.lua"))()
+local Window = Library.CreateLib("OverView", "DarkTheme")
+--
+local AbColor = Color3.fromRGB(255, 128, 128)
+local EspColor = Color3.fromRGB(255, 128, 128)
+
+--General
+local General = Window:NewTab("General")
+local GeneralSection = General:NewSection("Info:")
+
+--View
+local ViewTab = Window:NewTab("View")
+local ViewSection = ViewTab:NewSection("Player, weapons hacks:")
+
+--Aimbot
+local AimbotTab = Window:NewTab("Aimbot")
+local AimbotSection = AimbotTab:NewSection("Aimbot")
+local SlidingsSection = AimbotTab:NewSection("Settings")
+local ABcolorSection = AimbotTab:NewSection("Color")
+
+--ESP
+local EspTab = Window:NewTab("ESP")
+local EspSection = EspTab:NewSection("ESP")
+local ColorSection = EspTab:NewSection("Color")
+local ExtraespSection = EspTab:NewSection("Extra ESPs:")
+
+--Hide UI
+local BindsTab = Window:NewTab("Hide UI")
+local BindsSection = BindsTab:NewSection("Hide UI")
+
+--Teams
+local function getTeam()
+    -- PF Sometimes changes the team names, if this is depreicated and not working,
+    -- you might be able to fix it by using dark dex to get the team names
+    local localPlayerGhostsTeamName = "Ghosts" -- the actual name of team ghosts
+    local playerFolderGhostsTeamName = "Bright orange" -- the name of the folder phantoms players are in
+    local playerFolderPhantomsTeamName = "Bright blue" -- the name of the folder ghost players are in
+    
+    if game.Players.LocalPlayer.Team.Name == localPlayerGhostsTeamName then return playerFolderPhantomsTeamName else return playerFolderGhostsTeamName end
+end
+
+--General Window
+GeneralSection:NewLabel("The tool was made for Zagwah#0001")
+GeneralSection:NewLabel("Riley is sped")
+GeneralSection:NewLabel("Aiden is black")
+GeneralSection:NewLabel("Version: 1.0")
+---------------aimbot
+
+local smoothing = 1
+local fov = 500
+local wallCheck = false
+local maxWalls = 0
+local abTargetPart = "Head"
+local FOVringList = {}
+
+local function isPointVisible(targetForWallCheck, mw)
+    local castPoints = {targetForWallCheck.PrimaryPart.Position}
+    local ignoreList = {targetForWallCheck, game.Players.LocalPlayer.Character, game.Workspace.CurrentCamera}
+    local result = workspace.CurrentCamera:GetPartsObscuringTarget(castPoints, ignoreList)
+    
+    return #result <= mw
+end
+
+AimbotSection:NewToggle("Enabled", "", function(state)
+    if state then
+        FOVringList = {}
+        abLoop = rs.RenderStepped:Connect(function()
+            for i,v in pairs(FOVringList) do
+                v:Remove()
+            end
+            
+            FOVringList = {}
+            
+            local FOVring = Drawing.new("Circle")
+            FOVring.Visible = true
+            FOVring.Thickness = 2
+            FOVring.Radius = fov / workspace.CurrentCamera.FieldOfView
+            FOVring.Transparency = 1
+            FOVring.Color = AbColor
+            FOVring.Position = game.Workspace.CurrentCamera.ViewportSize/2
+            
+            FOVringList[#FOVringList+1] = FOVring
+            
+            local team = getTeam()
+            
+            local target = Vector2.new(math.huge, math.huge)
+            local targetPos
+            local targetPlayer
+            if game.Workspace.Players:FindFirstChild(team) then
+                for i,v in pairs(game.Workspace.Players:FindFirstChild(team):GetChildren()) do
+                    local pos = v[abTargetPart].Position
+                    local ScreenSpacePos, IsOnScreen = game.Workspace.CurrentCamera:WorldToViewportPoint(pos)
+                    ScreenSpacePos = Vector2.new(ScreenSpacePos.X, ScreenSpacePos.Y) - game.Workspace.CurrentCamera.ViewportSize/2
+                    
+                    if IsOnScreen and ScreenSpacePos.Magnitude < target.Magnitude and (isPointVisible(v, maxWalls) or not wallCheck) then
+                        target = ScreenSpacePos
+                        targetPos = pos
+                        targetPlayer = v
+                    end
+                end
+            end
+            
+            if target.Magnitude <= fov / workspace.CurrentCamera.FieldOfView and uis:IsMouseButtonPressed(Enum.UserInputType.MouseButton2) then
+                if target ~= Vector2.new(math.huge, math.huge) then
+                    mousemoverel(target.X/smoothing, target.Y/smoothing)
+                end
+            end
+        end)
+    else
+        abLoop:Disconnect()
+        for i,v in pairs(FOVringList) do
+            v:Remove()
+        end
+    end
+end)
+
+AimbotSection:NewToggle("Wall Check", "", function(state) wallCheck = state end)
+SlidingsSection:NewSlider("Max Wallbangs", "Inclusive", 50, 0, function(s) maxWalls = s end)
+SlidingsSection:NewSlider("Ring", "", 50000, 500, function(s) fov = s end)
+SlidingsSection:NewSlider("Legitness", "", 300, 100, function(s) smoothing = s/100 end)
+
+
+---------
+--ESP Customize Window
+local LineList = {}
+local width = 3
+local height = 5
+-----
+EspSection:NewToggle("Enabled", "", function(state)
+    if state then
+        LineList = {}
+        espLoop = rs.RenderStepped:Connect(function()
+            for i,v in pairs(LineList) do
+                if v then
+                    v:Remove()
+                end
+            end
+            
+            local team = getTeam()
+
+            LineList = {}
+            if game.Workspace.Players:FindFirstChild(team) then
+                for i,v in pairs(game.Workspace.Players:FindFirstChild(team):GetChildren()) do
+                    local pos = v.PrimaryPart.Position
+                    local ScreenSpacePos, IsOnScreen = game.Workspace.CurrentCamera:WorldToViewportPoint(pos)
+                    
+                    a = game.Workspace.CurrentCamera:WorldToViewportPoint(v.Torso.CFrame:PointToWorldSpace(Vector3.new(width/2, height/2, 0)))
+                    b = game.Workspace.CurrentCamera:WorldToViewportPoint(v.Torso.CFrame:PointToWorldSpace(Vector3.new(-width/2, height/2, 0)))
+                    c = game.Workspace.CurrentCamera:WorldToViewportPoint(v.Torso.CFrame:PointToWorldSpace(Vector3.new(-width/2, -height/2, 0)))
+                    d = game.Workspace.CurrentCamera:WorldToViewportPoint(v.Torso.CFrame:PointToWorldSpace(Vector3.new(width/2, -height/2, 0)))
+                    
+                    a = Vector2.new(a.X, a.Y)
+                    b = Vector2.new(b.X, b.Y)
+                    c = Vector2.new(c.X, c.Y)
+                    d = Vector2.new(d.X, d.Y)
+                    
+                    if IsOnScreen then
+                        local Line = Drawing.new("Quad")
+                        Line.Visible = true
+                        Line.PointA = a
+                        Line.PointB = b
+                        Line.PointC = c
+                        Line.PointD = d
+                        Line.Color = EspColor
+                        Line.Thickness = 2
+                        Line.Transparency = 1
+                        
+                        LineList[#LineList+1] = Line
+                    end
+                end
+            end
+        end)
+    else
+        espLoop:Disconnect()
+        for i,v in pairs(LineList) do
+            v:Remove()
+        end
+        LineList = {}
+    end
+end)
+
+--EXTRA ESP WINDOW
+ExtraespSection:NewButton("Weapon ESP", "You can only remove it by reseting the game! It shows the dropped weapons all around the map.", function()
+    loadstring(game:HttpGet("https://pastebin.com/raw/3Dqc3F1m", true))()
+end)
+
+ExtraespSection:NewButton("Cham ESP", "You can only remove it by reseting the game!. Just good looking cham ESP.", function()
+    loadstring(game:HttpGet("https://pastebin.com/raw/Phmub9pn", true))()
+end)
+
+------------PLAYER WINDOW-------------------
+--Jump
+ViewSection:NewButton("Jumping boy", "You can only remove it by reseting the game!. Press B and jump multiple times <3.", function()
+    loadstring(game:HttpGet("https://pastebin.com/raw/eapp9yfd", true))()
+end)
+
+--Rainbow Weapons
+ViewSection:NewButton("Rainbow Weapons", "Makes your weapons rainbow.", function()
+    loadstring(game:HttpGet("https://pastebin.com/raw/4GWudKA2", true))()
+end)
+--
+
+--Color customization Window
+
+----------------------------
+ABcolorSection:NewColorPicker("Fov Ring Color", "", Color3.fromRGB(255,128,128), function(color)
+    AbColor = color
+end)
+-----------------------------
+
+ColorSection:NewColorPicker("Esp Color", "", Color3.fromRGB(255,128,128), function(color)
+    EspColor = color
+end)
+
+--Hide UI
+BindsSection:NewKeybind("Toggle UI", "", Enum.KeyCode.F, function()
+	Library:ToggleUI()
+end)
